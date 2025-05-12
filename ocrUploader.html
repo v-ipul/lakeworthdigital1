@@ -8,8 +8,18 @@
             multiple={false}
         ></lightning-file-upload>
 
+        <!-- Display Loading Spinner while processing -->
         <template if:true={isLoading}>
             <lightning-spinner alternative-text="Processing..."></lightning-spinner>
+        </template>
+
+        <!-- Display extracted text -->
+        <template if:true={extractedText}>
+            <lightning-card title="Extracted Text">
+                <div class="slds-p-around_medium">
+                    <p>{extractedText}</p>
+                </div>
+            </lightning-card>
         </template>
     </lightning-card>
 </template>
