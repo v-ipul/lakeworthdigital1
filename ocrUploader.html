@@ -7,5 +7,9 @@
             onuploadfinished={handleUploadFinished}
             multiple={false}
         ></lightning-file-upload>
+
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Processing..."></lightning-spinner>
+        </template>
     </lightning-card>
 </template>
