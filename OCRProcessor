@@ -1,47 +1,32 @@
 public class OCRProcessor implements Queueable, Database.AllowsCallouts {
     String contentDocumentId;
-    String documentTypeId;
 
-    // Constructor to initialize contentDocumentId and optional documentTypeId
-    public OCRProcessor(String contentDocumentId, String documentTypeId) {
+    public OCRProcessor(String contentDocumentId) {
         this.contentDocumentId = contentDocumentId;
-        this.documentTypeId = documentTypeId;
     }
 
     public void execute(QueueableContext context) {
-        // Prepare the request body for InitiateTextExtraction API call
+        // Step 1: Initiate OCR Extraction using the invocable action
         Map<String, Object> requestMap = new Map<String, Object>{
             'contentDocumentId' => contentDocumentId,
-            'ocrService' => 'AMAZON_TEXTRACT',  // Default to AWS Textract service
+            'ocrService' => 'AMAZON_TEXTRACT',  // Use AWS Textract
             'startPageIndex' => 1,
-            'endPageIndex' => 20
+            'endPageIndex' => 20  // Adjust page range as needed
         };
 
-        if (documentTypeId != null) {
-            requestMap.put('documentTypeId', documentTypeId);
-        }
-
-        // Send the request to initiate text extraction
+        // Sending request to the InitiateTextExtraction endpoint
         String endpoint = '/services/data/vXX.X/actions/standard/initiateTextExtraction';
         Map<String, Object> responseMap = sendRequestToRestApi(endpoint, requestMap);
 
-        // Process the response from the OCR service
         if (responseMap.containsKey('ocrDocumentScanResultDetails')) {
-            List<Map<String, Object>> scanResults = (List<Map<String, Object>>) responseMap.get('ocrDocumentScanResultDetails');
-            List<String> ocrDocumentScanResultIds = new List<String>();
-            for (Map<String, Object> result : scanResults) {
-                ocrDocumentScanResultIds.add((String) result.get('ocrDocumentScanResultId'));
-            }
-            
-            // Trigger the next job to fetch and store extracted text
-            System.enqueueJob(new OCRFetchAndStore(contentDocumentId, ocrDocumentScanResultIds));
-        } else {
-            System.debug('OCR initiation failed: ' + responseMap.get('errors'));
+            List<String> scanResultIds = (List<String>) responseMap.get('ocrDocumentScanResultDetails');
+            // After OCR extraction is initiated, enqueue job to fetch the results
+            System.enqueueJob(new OCRFetchAndStore(contentDocumentId, scanResultIds));
         }
     }
 
-    // Helper method to send the HTTP request for initiating text extraction
-    public static Map<String, Object> sendRequestToRestApi(String endpoint, Map<String, Object> bodyMap) {
+    // Utility method to send a REST API request
+    private static Map<String, Object> sendRequestToRestApi(String endpoint, Map<String, Object> bodyMap) {
         HttpRequest req = new HttpRequest();
         req.setEndpoint(URL.getOrgDomainUrl().toExternalForm() + endpoint);
         req.setMethod('POST');
@@ -52,7 +37,6 @@ public class OCRProcessor implements Queueable, Database.AllowsCallouts {
         Http http = new Http();
         HttpResponse res = http.send(req);
 
-        // Parse the response into a map
         return (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
     }
 }
