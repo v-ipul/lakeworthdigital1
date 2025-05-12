@@ -1,0 +1,11 @@
+<template>
+    <lightning-card title="Upload Document for OCR">
+        <lightning-file-upload
+            label="Upload Document"
+            name="fileUploader"
+            record-id={parentRecordId}
+            onuploadfinished={handleUploadFinished}
+            multiple={false}
+        ></lightning-file-upload>
+    </lightning-card>
+</template>
