@@ -15,6 +15,9 @@ public with sharing class OCRAsyncHandler {
             SELECT ExtractedValues FROM OcrDocumentScanResult WHERE ContentDocumentId = :contentDocumentId
         ];
 
+        // Log response for debugging
+        System.debug('OCR Extracted Results: ' + scanResults);
+
         // Parse the extracted values and return them
         if (!scanResults.isEmpty()) {
             OcrDocumentScanResult result = scanResults[0];
