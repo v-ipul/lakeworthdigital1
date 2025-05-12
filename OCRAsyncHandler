@@ -1,7 +1,35 @@
 public with sharing class OCRAsyncHandler {
     @AuraEnabled
     public static void startOcrAsyncJob(String contentDocumentId) {
-        // Enqueue the job to process OCR
+        // Enqueue the job to process OCR (as previously defined)
         System.enqueueJob(new OCRProcessor(contentDocumentId));
+    }
+
+    // Fetch the extracted text after OCR process is complete
+    @AuraEnabled
+    public static Map<String, String> fetchExtractedText(String contentDocumentId) {
+        Map<String, String> extractedText = new Map<String, String>();
+
+        // Query the OcrDocumentScanResult for the extracted text
+        List<OcrDocumentScanResult> scanResults = [
+            SELECT ExtractedValues FROM OcrDocumentScanResult WHERE ContentDocumentId = :contentDocumentId
+        ];
+
+        // Parse the extracted values and return them
+        if (!scanResults.isEmpty()) {
+            OcrDocumentScanResult result = scanResults[0];
+            Map<String, Object> jsonMap = (Map<String, Object>) JSON.deserializeUntyped(result.ExtractedValues);
+
+            List<Object> keyValuePairs = (List<Object>) jsonMap.get('keyValuePair');
+            for (Object kv : keyValuePairs) {
+                Map<String, Object> keyValueMap = (Map<String, Object>) kv;
+                String key = (String) ((Map<String, Object>) keyValueMap.get('key')).get('value');
+                String value = (String) ((Map<String, Object>) keyValueMap.get('value')).get('value');
+                
+                extractedText.put(key, value);
+            }
+        }
+
+        return extractedText;
     }
 }
