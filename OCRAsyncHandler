@@ -1,6 +1,7 @@
 public with sharing class OCRAsyncHandler {
     @AuraEnabled
     public static void startOcrAsyncJob(String contentDocumentId) {
-        System.enqueueJob(new OCRProcessor(contentDocumentId));  // Queue the job for asynchronous execution
+        // Enqueue the job to process OCR
+        System.enqueueJob(new OCRProcessor(contentDocumentId));
     }
 }
