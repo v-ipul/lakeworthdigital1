@@ -17,7 +17,10 @@ export default class OcrUploader extends LightningElement {
         startOcrAsyncJob({ contentDocumentId: documentId })
             .then(() => {
                 console.log('OCR process initiated.');
-                return this.fetchText(documentId);
+                // Poll or wait a bit before fetching the extracted text
+                setTimeout(() => {
+                    this.fetchText(documentId); // Fetch the extracted text after a short delay
+                }, 5000); // Wait 5 seconds (adjust as necessary)
             })
             .catch(error => {
                 console.error('OCR failed:', error);
@@ -27,11 +30,14 @@ export default class OcrUploader extends LightningElement {
 
     // Fetch the extracted text from AWS Textract after OCR is done
     fetchText(contentDocumentId) {
-        return fetchExtractedText({ contentDocumentId })
+        fetchExtractedText({ contentDocumentId })
             .then(result => {
-                // Extract the text from the result and display it
+                console.log('Fetched Extracted Text:', result); // Log the full result
+                // Check if the result contains extracted text
                 if (result && result.extractedText) {
                     this.extractedText = result.extractedText;
+                } else {
+                    console.log('No extracted text found!');
                 }
                 this.isLoading = false;
             })
