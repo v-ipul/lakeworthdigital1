@@ -1,0 +1,73 @@
+public class OCRFetchAndStore implements Queueable, Database.AllowsCallouts {
+    String contentDocumentId;
+    List<String> ocrDocumentScanResultIds;
+
+    // Constructor to initialize contentDocumentId and the list of ocrDocumentScanResultIds
+    public OCRFetchAndStore(String contentDocumentId, List<String> ocrDocumentScanResultIds) {
+        this.contentDocumentId = contentDocumentId;
+        this.ocrDocumentScanResultIds = ocrDocumentScanResultIds;
+    }
+
+    public void execute(QueueableContext context) {
+        // Fetch the extracted text based on the ocrDocumentScanResultIds
+        Map<String, Object> requestMap = new Map<String, Object>{
+            'contentDocumentId' => contentDocumentId,
+            'ocrDocumentScanResultIds' => ocrDocumentScanResultIds
+        };
+
+        String endpoint = '/services/data/vXX.X/actions/standard/fetchExtractedText';
+        Map<String, Object> responseMap = sendRequestToRestApi(endpoint, requestMap);
+
+        // Process and extract key-value pairs from the response
+        Map<String, String> extractedData = extractText(responseMap);
+
+        // Store the extracted text in Salesforce (e.g., create a Case record)
+        createRecord(extractedData);
+    }
+
+    // Helper method to send the HTTP request for fetching the extracted text
+    public static Map<String, Object> sendRequestToRestApi(String endpoint, Map<String, Object> bodyMap) {
+        HttpRequest req = new HttpRequest();
+        req.setEndpoint(URL.getOrgDomainUrl().toExternalForm() + endpoint);
+        req.setMethod('POST');
+        req.setHeader('Authorization', 'Bearer ' + UserInfo.getSessionId());
+        req.setHeader('Content-Type', 'application/json');
+        req.setBody(JSON.serialize(bodyMap));
+
+        Http http = new Http();
+        HttpResponse res = http.send(req);
+
+        // Parse the response into a map
+        return (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
+    }
+
+    // Helper method to extract key-value pairs from the response
+    private Map<String, String> extractText(Map<String, Object> responseMap) {
+        Map<String, String> extractedData = new Map<String, String>();
+        List<Map<String, Object>> keyValuePairs = (List<Map<String, Object>>) responseMap.get('keyValuePair');
+
+        for (Map<String, Object> kv : keyValuePairs) {
+            String key = (String) kv.get('key');
+            String value = (String) kv.get('value');
+            extractedData.put(key, value);
+        }
+
+        return extractedData;
+    }
+
+    // Helper method to create a record and save the extracted data
+    private void createRecord(Map<String, String> extractedData) {
+        Case newCase = new Case(
+            Origin = 'OCR Upload',
+            Status = 'New',
+            Subject = 'Auto-created via OCR'
+        );
+
+        // Example of how to map extracted data to record fields
+        if (extractedData.containsKey('Employee\'s social security number')) {
+            newCase.SSN__c = extractedData.get('Employee\'s social security number');
+        }
+
+        insert newCase;
+    }
+}
