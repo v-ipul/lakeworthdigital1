@@ -1,74 +1,50 @@
 public class TransformDocument {
-    private static final String KEY_VALUE_PAIR = 'keyValuePair';
-    private static final String TEXT = 'text';
-    
     @InvocableMethod(label='Create Profit and Loss Record from OCR' description='Creates a Profit and Loss record using extracted OCR values')
     public static void transform(List<TransformDocumentDetailsRequest> requestList) {
-        // Get the OCR response based on the content document ID
+        // Get the OCR document scan result based on content document ID
         List<OcrDocumentScanResult> odsrResponse = getOdsrResponse(requestList[0].contentDocumentID);
         
-        // Initialize a map to store the extracted OCR values
-        Map<String, String> extractedValues = new Map<String, String>();
-        
-        // Loop through the OCR document results and extract key-value pairs dynamically
+        // Process each document scan result (assuming your OCR template is correctly mapped)
         for (OcrDocumentScanResult ocrScanResult : odsrResponse) {
-            String response = ocrScanResult.ExtractedValues;
-            Map<String, Object> jsonMap = (Map<String, Object>) JSON.deserializeUntyped(response);
-            List<Object> keyValuePairList = (List<Object>) jsonMap.get(KEY_VALUE_PAIR);
-            
-            // Extract each key-value pair dynamically and store it in the map
-            for (Object keyValuePair : keyValuePairList) {
-                Map<String, Object> keyValuePairMap = (Map<String, Object>) keyValuePair;
-                Map<String, Object> keyMap = (Map<String, Object>) keyValuePairMap.get('key');
-                String key = (String) keyMap.get(TEXT); // The key from OCR (e.g., "FIRST_NAME", "ADDRESS")
-                String value = (String) ((Map<String, Object>) keyValuePairMap.get('value')).get(TEXT); // The corresponding value
-                
-                // Store the extracted value in the map
-                extractedValues.put(key, value);
-            }
+            // Process the extracted values and store them in the Profit and Loss object
+            Map<String, String> extractedValues = processOcrResponse(ocrScanResult.ExtractedValues);
+            saveExtractedValuesInTargetObject('Profit_and_Loss__c', extractedValues);
         }
-
-        // Debug log to check extracted values
-        System.debug('Extracted Values: ' + extractedValues);
-        
-        // Prepare the fields for the Profit and Loss object (custom object)
-        Map<String, String> requiredFields = new Map<String, String>();
-
-        // Dynamically assign values based on extracted OCR data
-        if (extractedValues.containsKey('FIRST_NAME')) {
-            requiredFields.put('Borrower_Name_s_c', extractedValues.get('FIRST_NAME'));
-        }
-        if (extractedValues.containsKey('LAST_NAME')) {
-            requiredFields.put('Company_Name', extractedValues.get('LAST_NAME')); // Modify based on field mapping
-        }
-        if (extractedValues.containsKey('ADDRESS')) {
-            requiredFields.put('Loan_Number__c', extractedValues.get('ADDRESS')); // Modify based on your field mappings
-        }
-        if (extractedValues.containsKey('CITY_IN_ADDRESS')) {
-            requiredFields.put('Type_of_Bussiness__c', extractedValues.get('CITY_IN_ADDRESS'));
-        }
-        
-        // Set default values for any missing fields (optional)
-        requiredFields.put('Loan_Number__c', '12345'); // Default Loan Number
-        requiredFields.put('OwnerId', '0050w00000CXYZ'); // Example OwnerId, modify with actual dynamic values if needed
-
-        // Save the extracted values in the Profit and Loss custom object
-        saveExtractedValuesInTargetObject('Profit_and_Loss__c', requiredFields);
     }
 
     // Fetch the OCR document scan result based on content document ID
     private static List<OcrDocumentScanResult> getOdsrResponse(String ContentDocumentID) {
-        List<OcrDocumentScanResult> ocrScanResults = [SELECT ExtractedValues FROM OcrDocumentScanResult WHERE ContentDocumentId = :ContentDocumentID];
-        return ocrScanResults;
+        return [SELECT ExtractedValues FROM OcrDocumentScanResult WHERE ContentDocumentId = :ContentDocumentID];
     }
 
-    // Save the extracted values dynamically in the Profit and Loss object (custom object)
-    private static void saveExtractedValuesInTargetObject(String objectType, Map<String, String> requiredFields) {
+    // Process the extracted OCR response and map it to target object fields
+    private static Map<String, String> processOcrResponse(String extractedValues) {
+        Map<String, String> fieldMap = new Map<String, String>();
+
+        // Parse the OCR response to map values to the corresponding fields
+        Map<String, Object> jsonMap = (Map<String, Object>) JSON.deserializeUntyped(extractedValues);
+        List<Object> keyValuePairs = (List<Object>) jsonMap.get('keyValuePair');
+        
+        // Dynamically process each extracted key-value pair
+        for (Object keyValuePair : keyValuePairs) {
+            Map<String, Object> keyValueMap = (Map<String, Object>) keyValuePair;
+            Map<String, Object> key = (Map<String, Object>) keyValueMap.get('key');
+            String keyText = (String) key.get('text');
+            String valueText = (String) ((Map<String, Object>) keyValueMap.get('value')).get('text');
+            
+            // Add the extracted key-value to the field map
+            fieldMap.put(keyText, valueText);
+        }
+        return fieldMap;
+    }
+
+    // Save the extracted values to the target custom object
+    private static void saveExtractedValuesInTargetObject(String objectType, Map<String, String> fieldMap) {
         SObject newRecord = (SObject) Type.forName(objectType).newInstance();
         
-        // Dynamically set fields for the custom Profit and Loss object based on extracted values
-        for (String field : requiredFields.keySet()) {
-            newRecord.put(field, requiredFields.get(field));
+        // Set each field dynamically based on the mapped key-value pairs
+        for (String field : fieldMap.keySet()) {
+            newRecord.put(field, fieldMap.get(field));
         }
         
         // Insert the new record into Salesforce
