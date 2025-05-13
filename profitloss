@@ -1,14 +1,20 @@
 public class TransformDocument {
+
     @InvocableMethod(label='Create Profit and Loss Record from OCR' description='Creates a Profit and Loss record using extracted OCR values')
     public static void transform(List<TransformDocumentDetailsRequest> requestList) {
-        // Get the OCR document scan result based on content document ID
-        List<OcrDocumentScanResult> odsrResponse = getOdsrResponse(requestList[0].contentDocumentID);
-        
-        // Process each document scan result (assuming your OCR template is correctly mapped)
-        for (OcrDocumentScanResult ocrScanResult : odsrResponse) {
-            // Process the extracted values and store them in the Profit and Loss object
-            Map<String, String> extractedValues = processOcrResponse(ocrScanResult.ExtractedValues);
-            saveExtractedValuesInTargetObject('Profit_and_Loss__c', extractedValues);
+        // Loop through each request object passed from Flow
+        for (TransformDocumentDetailsRequest request : requestList) {
+            // Get the OCR response based on the content document ID
+            List<OcrDocumentScanResult> odsrResponse = getOdsrResponse(request.contentDocumentID);
+            
+            // Process each document scan result (assuming your OCR template is correctly mapped)
+            for (OcrDocumentScanResult ocrScanResult : odsrResponse) {
+                // Process the extracted values and store them in the Profit and Loss object
+                Map<String, String> extractedValues = processOcrResponse(ocrScanResult.ExtractedValues);
+                
+                // Use the target object name provided in the request and save the extracted values
+                saveExtractedValuesInTargetObject(request.targetObjectApiName, extractedValues);
+            }
         }
     }
 
