@@ -18,13 +18,23 @@ public class TransformDocument {
         
         // Mapping the values to the Account object fields
         Map<String, String> requiredFields = new Map<String, String>();
-        requiredFields.put('Name', firstName + ' ' + lastName); // Account name as Full Name
-        requiredFields.put('BillingStreet', address);  // Account Billing Street
-        requiredFields.put('BillingCity', city);  // Account Billing City
-        requiredFields.put('BillingPostalCode', zipCode); // Account Billing Postal Code
+        // Set default values for 'Phone', 'HomeEmail', 'Home Address', and 'Mailing Address' fields
+        requiredFields.put('Phone', '123-456-7890'); // Default phone number
+        requiredFields.put('HomeEmail', 'example@example.com'); // Default email
+
+        // Set default address fields
+        requiredFields.put('HomeStreet', '123 Default St'); // Default street for home address
+        requiredFields.put('HomeCity', 'Default City'); // Default city for home address
+        requiredFields.put('HomeStateProvince', 'California'); // Default state for home address
+        requiredFields.put('HomeZipPostalCode', '12345'); // Default zip code for home address
+
+        requiredFields.put('MailingStreet', '123 Default St'); // Default mailing street address
+        requiredFields.put('MailingCity', 'Default City'); // Default mailing city
+        requiredFields.put('MailingStateProvince', 'California'); // Default mailing state
+        requiredFields.put('MailingZipPostalCode', '12345'); // Default mailing zip code
         
         // Save the extracted values in the Account object
-        saveExtractedValuesInTargetObject(requestList[0].targetObjectApiName, requiredFields);
+        saveExtractedValuesInTargetObject(requestList[0].Account, requiredFields);
     }
 
     // Fetch the OCR document scan result
