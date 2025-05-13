@@ -38,8 +38,16 @@ public class TransformDocument {
             String keyText = (String) key.get('text');
             String valueText = (String) ((Map<String, Object>) keyValueMap.get('value')).get('text');
             
-            // Add the extracted key-value to the field map
-            fieldMap.put(keyText, valueText);
+            // Add the extracted key-value to the field map (use the correct field mappings)
+            if (keyText == 'FIRST_NAME') {
+                fieldMap.put('Borrower_Name_s_c', valueText); // Map to Borrower_Name_s_c
+            } else if (keyText == 'LAST_NAME') {
+                fieldMap.put('Company_Name', valueText); // Map to Company_Name
+            } else if (keyText == 'LOAN_NUMBER') {
+                fieldMap.put('Loan_Number__c', valueText); // Map to Loan_Number__c
+            } else if (keyText == 'BUSINESS_TYPE') {
+                fieldMap.put('Type_of_Bussiness__c', valueText); // Map to Type_of_Bussiness__c
+            }
         }
         return fieldMap;
     }
