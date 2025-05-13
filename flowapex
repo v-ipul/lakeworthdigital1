@@ -1,0 +1,66 @@
+public class TransformDocument {
+    private static final String KEY_VALUE_PAIR = 'keyValuePair';
+    private static final String TEXT = 'text';
+    
+    @InvocableMethod(label='Create Account Record from OCR' description='Creates an Account Record using extracted OCR values')
+    public static void transform(List<TransformDocumentDetailsRequest> requestList) {
+        // Get the OCR response
+        List<OcrDocumentScanResult> odsrResponse = getOdsrResponse(requestList[0].contentDocumentID);
+        
+        // Fetch the key-value pair for the required fields
+        String firstName = getValue(odsrResponse, 'FIRST_NAME');
+        String lastName = getValue(odsrResponse, 'LAST_NAME');
+        String address = getValue(odsrResponse, 'ADDRESS');
+        String city = getValue(odsrResponse, 'CITY_IN_ADDRESS');
+        String zipCode = getValue(odsrResponse, 'ZIP_CODE_IN_ADDRESS');
+        
+        System.debug('First Name: ' + firstName + ' Last Name: ' + lastName + ' Address: ' + address);
+        
+        // Mapping the values to the Account object fields
+        Map<String, String> requiredFields = new Map<String, String>();
+        requiredFields.put('Name', firstName + ' ' + lastName); // Account name as Full Name
+        requiredFields.put('BillingStreet', address);  // Account Billing Street
+        requiredFields.put('BillingCity', city);  // Account Billing City
+        requiredFields.put('BillingPostalCode', zipCode); // Account Billing Postal Code
+        
+        // Save the extracted values in the Account object
+        saveExtractedValuesInTargetObject(requestList[0].targetObjectApiName, requiredFields);
+    }
+
+    // Fetch the OCR document scan result
+    private static List<OcrDocumentScanResult> getOdsrResponse(String ContentDocumentID) {
+        List<OcrDocumentScanResult> ocrScanResults = [SELECT ExtractedValues FROM OcrDocumentScanResult WHERE ContentDocumentId = :ContentDocumentID];
+        return ocrScanResults;
+    }
+
+    // Fetch the extracted value for the given key
+    private static String getValue(List<OcrDocumentScanResult> ocrDocumentScanResults, String key) {
+        String value = '';
+        for (OcrDocumentScanResult ocrScanResult : ocrDocumentScanResults) {
+            String response = ocrScanResult.ExtractedValues;
+            Map<String, Object> jsonMap = (Map<String, Object>) JSON.deserializeUntyped(response);
+            List<Object> keyValuePairList = (List<Object>) jsonMap.get(KEY_VALUE_PAIR);
+            for (Object keyValuePair : keyValuePairList) {
+                Map<String, Object> keyValuePairMap = (Map<String, Object>) keyValuePair;
+                Map<String, Object> keyMap = (Map<String, Object>) keyValuePairMap.get('key');
+                if (keyMap.get(TEXT).equals(key)) {
+                    Map<String, Object> valueMap = (Map<String, Object>) keyValuePairMap.get('value');
+                    if (valueMap != null) {
+                        value = (String) valueMap.get(TEXT);
+                        break;
+                    }
+                }
+            }
+        }
+        return value;
+    }
+
+    // Save the extracted values in the target object (Account)
+    private static void saveExtractedValuesInTargetObject(String objectType, Map<String, String> requiredFields) {
+        SObject newRecord = (SObject) Type.forName(objectType).newInstance();
+        for (String field : requiredFields.keySet()) {
+            newRecord.put(field, requiredFields.get(field));
+        }
+        insert newRecord;
+    }
+}
