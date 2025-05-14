@@ -34,14 +34,13 @@
                             </template>
                         </div>
                         <div>
-                            <lightning-file-upload
-                                class="slds-theme_default"
-                                name={document.Name}
-                                record-id={document.Id}
-                                data-index={index}
-                                onuploadfinished={handleUploadFinished}
-                                multiple
-                            ></lightning-file-upload>
+                                 <lightning-file-upload 
+                label="Upload Files" 
+                name="fileUploader" 
+                accept={acceptedFormats} 
+                record-id={recordId} 
+                onuploadfinished={handleUploadFinished}>
+            </lightning-file-upload>
                         </div>
                     </div>
                     <!-- Right: Read-only Checked Box -->
