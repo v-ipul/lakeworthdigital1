@@ -1,0 +1,54 @@
+public class ProcessDocumentJob implements Queueable {
+    private String contentDocumentId;
+    private String recordId;
+
+    // Constructor to initialize contentDocumentId and recordId
+    public ProcessDocumentJob(String contentDocumentId, String recordId) {
+        this.contentDocumentId = contentDocumentId;
+        this.recordId = recordId;
+    }
+
+    public void execute(QueueableContext context) {
+        try {
+            // Retrieve the content of the file (e.g., PDF or Image)
+            ContentVersion cv = [SELECT Id, Title, VersionData FROM ContentVersion WHERE ContentDocumentId = :contentDocumentId LIMIT 1];
+            
+            // Check if ContentVersion is found
+            if (cv == null) {
+                System.debug('No ContentVersion found for ContentDocumentId: ' + contentDocumentId);
+                return; // Exit the job if no record is found
+            }
+
+            // Call the OCR process (AWS Textract or any OCR service)
+            String ocrResult = triggerOcrProcessing(cv.VersionData);
+
+            // Insert a new Profit_and_Loss__c record with extracted data
+            insertNewProfitAndLossRecord(ocrResult);
+        } catch (Exception e) {
+            System.debug('Error processing document: ' + e.getMessage());
+        }
+    }
+
+    private String triggerOcrProcessing(Blob documentData) {
+        // Simulate sending the document to an OCR service
+        // Replace with actual call to OCR service like AWS Textract
+        return 'Simulated OCR result with extracted data';
+    }
+
+    private void insertNewProfitAndLossRecord(String ocrResult) {
+        // Create a new instance of Profit_and_Loss__c
+        Profit_and_Loss__c newRecord = new Profit_and_Loss__c();
+
+        // Simulating extracted OCR data (replace with actual OCR result parsing)
+		newRecord.Borrower_Name_s__c = 'Timothy Ratliff, Rick Hatchett';
+        newRecord.Name = 'XYZ Builders'; // Example: Replaced Company_Name__c with Name
+        newRecord.Loan_Number__c = 093384; // Numeric Loan Number instead of string
+        newRecord.Type_of_Bussiness__c = 'Commercial Real Estate'; // Example extracted data
+
+        // Insert the new record into Salesforce
+        insert newRecord;
+
+        // Optionally log success
+        System.debug('New Profit_and_Loss__c record inserted with Id: ' + newRecord.Id);
+    }
+}
