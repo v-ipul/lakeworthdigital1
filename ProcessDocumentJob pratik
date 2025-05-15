@@ -90,6 +90,51 @@ public class ProcessDocumentJob implements Queueable, Database.AllowsCallouts {
     // }
 }
 
+	// Fetch the extracted text using the fetchExtractedText API
+    private String fetchExtractedText(String contentDocumentId) {
+      //  try {
+            Http http = new Http();
+            HttpRequest request = new HttpRequest();
+
+            // Salesforce REST API endpoint to fetch extracted text
+            String endpointUrl = '/services/data/v58.0/actions/standard/fetchExtractedText';
+            
+            // Prepare the request body as a JSON string
+            String requestBody = JSON.serialize(new Map<String, Object>{
+                'inputs' => new List<Map<String, Object>>{
+                    new Map<String, Object>{
+                        'contentDocumentId' => contentDocumentId,  // Content Document ID
+                        'startPageIndex' => 1,  // Default to page 1
+                        'endPageIndex' => 20   // You can change the number of pages to extract
+                    }
+                }
+            });
+
+            // Set up the HTTP request
+            request.setEndpoint(URL.getOrgDomainUrl().toExternalForm() + endpointUrl);  // Combine Salesforce base URL with the endpoint
+            request.setMethod('POST');
+            request.setHeader('Content-Type', 'application/json');
+            request.setHeader('Authorization', 'Bearer ' + UserInfo.getSessionId());  // Use the session ID for authorization
+            request.setBody(requestBody);
+
+            // Send the HTTP request
+            HttpResponse response = http.send(request);
+
+            // Handle the response
+            if (response.getStatusCode() == 200) {
+                System.debug('Extracted Text API response: ' + response.getBody());
+                // Return the response body containing the extracted text
+                return response.getBody();
+            } else {
+                System.debug('Error calling Extracted Text API, status: ' + response.getStatus() + ', body: ' + response.getBody());
+                return null;
+            }
+        // } catch (Exception ex) {
+        //     System.debug('Exception during Fetch Extracted Text: ' + ex.getMessage());
+        //     return null;
+        // }
+    }
+
     private void insertNewProfitAndLossRecord(String ocrResult) {
         try {
             Profit_and_Loss__c newRecord = new Profit_and_Loss__c();
