@@ -7,21 +7,21 @@ public class ProfitAndLossSaverJob implements Queueable {
     }
 
     public void execute(QueueableContext context) {
+        System.debug('Starting execute with detailsString: ' + detailsString);
         insertNewProfitAndLossRecord(detailsString);
     }
 
     private void insertNewProfitAndLossRecord(String detailsString) {
-        // Defensive check
+        System.debug('insertNewProfitAndLossRecord called with detailsString: ' + detailsString);
+
         if (String.isBlank(detailsString)) {
             System.debug('No details provided!');
             return;
         }
 
         Profit_and_Loss__c newRecord = new Profit_and_Loss__c();
+        System.debug('Created new Profit_and_Loss__c record');
 
-        // Example: crude parsing (for demonstration - you may improve with Regex if needed)
-        // Look for keys in your string and extract values
-        // Example key pattern: key={value=XXXX, confidence=XX}
         Map<String, String> fieldMap = new Map<String, String>{
             'Borrower Name' => 'Borrower_Name_s__c',
             'Company Name' => 'Name',
@@ -30,25 +30,31 @@ public class ProfitAndLossSaverJob implements Queueable {
         };
 
         for (String key : fieldMap.keySet()) {
+            System.debug('Looking for key: ' + key);
             Pattern p = Pattern.compile(key + '[^}]*value=([^,}]*)');
             Matcher m = p.matcher(detailsString);
             if (m.find()) {
                 String value = m.group(1).trim();
+                System.debug('Matched key: ' + key + ', value: ' + value);
+
                 // Set field accordingly
                 if (fieldMap.get(key) == 'Borrower_Name_s__c') {
                     newRecord.Borrower_Name_s__c = value;
+                    System.debug('Set Borrower_Name_s__c');
                 } else if (fieldMap.get(key) == 'Name') {
                     newRecord.Name = value;
+                    System.debug('Set Name');
                 } else if (fieldMap.get(key) == 'Loan_Number__c') {
-                    // Remove any non-numeric character for loan number
-                    //newRecord.Loan_Number__c = value.replaceAll('\\D', '');
+                    // newRecord.Loan_Number__c = value.replaceAll('\\D', '');
+                    System.debug('Set Loan_Number__c');
                 } else if (fieldMap.get(key) == 'Type_of_Bussiness__c') {
                     newRecord.Type_of_Bussiness__c = value;
+                    System.debug('Set Type_of_Bussiness__c');
                 }
+            } else {
+                System.debug('Key not found: ' + key);
             }
         }
-
-        // You can add more fields as needed
 
         try {
             insert newRecord;
