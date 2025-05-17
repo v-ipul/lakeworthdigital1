@@ -1,6 +1,2 @@
-# lakeworthdigital1
-
-if (keyStr.containsIgnoreCase('Company Name')) {
-    newRecord.Company_Name__c = valueStr;
-}
-
+  String detailsString = JSON.serialize(fetchExtractedText(ocrDocumentScanResultId, contentDocumentId)); 
+        System.enqueueJob(new ProfitAndLossSaverJob(detailsString));
