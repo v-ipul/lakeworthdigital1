@@ -1,3 +1,15 @@
+public class ProfitAndLossSaverJob implements Queueable {
+
+    private String detailsString;
+
+    public ProfitAndLossSaverJob(String detailsString) {
+        this.detailsString = detailsString;
+    }
+
+    public void execute(QueueableContext context) {
+        System.debug('Starting execute with detailsString: ' + detailsString);
+        insertNewProfitAndLossRecord(detailsString);
+    }
 private void insertNewProfitAndLossRecord(String detailsString) {
     System.debug('insertNewProfitAndLossRecord called with detailsString: ' + detailsString);
 
@@ -48,10 +60,10 @@ private void insertNewProfitAndLossRecord(String detailsString) {
                         newRecord.Borrower_Name_s__c = valueStr;
                     } else if (keyNormalized.contains('companyname')) {
                         System.debug('Setting Company_Name__c');
-                        newRecord.Company_Name__c = valueStr;
+                        newRecord.Name = valueStr;
                     } else if (keyNormalized.contains('loannumber')) {
                         System.debug('Setting Loan_Number__c');
-                        newRecord.Loan_Number__c = valueStr;
+                        //newRecord.Loan_Number__c = valueStr;
                     } else if (keyNormalized.contains('typeofbusiness')) {
                         System.debug('Setting Type_of_Bussiness__c');
                         newRecord.Type_of_Bussiness__c = valueStr;
@@ -74,4 +86,5 @@ private void insertNewProfitAndLossRecord(String detailsString) {
     } catch (Exception e) {
         System.debug('Failed to insert: ' + e.getMessage());
     }
+}
 }
