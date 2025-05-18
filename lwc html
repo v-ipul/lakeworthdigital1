@@ -1,0 +1,107 @@
+<template>
+    <lightning-card title="Document Checklist">
+        <div class="slds-p-around_medium">
+
+            <!-- 1st Document -->
+            <div class="doc-item slds-box slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <div class="doc-content">
+                    <div class="doc-title">Residential Townhouse Appraisal /Commercial Appraisal</div>
+                    <lightning-file-upload
+                        label="Upload"
+                        name="Residential Townhouse Appraisal /Commercial Appraisal"
+                        onuploadfinished={handleUploadFinished1}
+                        multiple>
+                    </lightning-file-upload>
+                    <template if:true={uploadedFiles1.length}>
+                        <div class="uploaded-files">
+                            <template for:each={uploadedFiles1} for:item="file">
+                                <div key={file.ContentDocumentId} class="uploaded-file">
+                                    <a href={file.toUrl} target="_blank">{file.Title}</a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                <div class="checkbox-wrapper">
+                    <lightning-input type="checkbox" checked={isUploaded1} disabled class="big-checkbox"></lightning-input>
+                </div>
+            </div>
+
+            <!-- 2nd Document -->
+            <div class="doc-item slds-box slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <div class="doc-content">
+                    <div class="doc-title">Profit & Loss Statement(P&L)</div>
+                    <lightning-file-upload
+                        label="Upload"
+                        name="Profit & Loss Statement(P&L)"
+                        onuploadfinished={handleUploadFinished2}
+                        multiple>
+                    </lightning-file-upload>
+                    <template if:true={uploadedFiles2.length}>
+                        <div class="uploaded-files">
+                            <template for:each={uploadedFiles2} for:item="file">
+                                <div key={file.ContentDocumentId} class="uploaded-file">
+                                    <a href={file.toUrl} target="_blank">{file.Title}</a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                <div class="checkbox-wrapper">
+                    <lightning-input type="checkbox" checked={isUploaded2} disabled class="big-checkbox"></lightning-input>
+                </div>
+            </div>
+
+            <!-- 3rd Document -->
+            <div class="doc-item slds-box slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <div class="doc-content">
+                    <div class="doc-title">Pre-Approval Memorandum (PAM)</div>
+                    <lightning-file-upload
+                        label="Upload"
+                        name="Pre-Approval Memorandum (PAM)"
+                        onuploadfinished={handleUploadFinished3}
+                        multiple>
+                    </lightning-file-upload>
+                    <template if:true={uploadedFiles3.length}>
+                        <div class="uploaded-files">
+                            <template for:each={uploadedFiles3} for:item="file">
+                                <div key={file.ContentDocumentId} class="uploaded-file">
+                                    <a href={file.toUrl} target="_blank">{file.Title}</a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                <div class="checkbox-wrapper">
+                    <lightning-input type="checkbox" checked={isUploaded3} disabled class="big-checkbox"></lightning-input>
+                </div>
+            </div>
+
+            <!-- 4th Document -->
+            <div class="doc-item slds-box slds-m-bottom_medium slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <div class="doc-content">
+                    <div class="doc-title">Other Supporting Document</div>
+                    <lightning-file-upload
+                        label="Upload"
+                        name="Other Supporting Document"
+                        onuploadfinished={handleUploadFinished4}
+                        multiple>
+                    </lightning-file-upload>
+                    <template if:true={uploadedFiles4.length}>
+                        <div class="uploaded-files">
+                            <template for:each={uploadedFiles4} for:item="file">
+                                <div key={file.ContentDocumentId} class="uploaded-file">
+                                    <a href={file.toUrl} target="_blank">{file.Title}</a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                <div class="checkbox-wrapper">
+                    <lightning-input type="checkbox" checked={isUploaded4} disabled class="big-checkbox"></lightning-input>
+                </div>
+            </div>
+
+        </div>
+    </lightning-card>
+</template>
