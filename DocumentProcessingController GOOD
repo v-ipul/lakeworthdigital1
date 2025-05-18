@@ -1,0 +1,14 @@
+public class DocumentProcessingController {
+
+    @AuraEnabled
+    public static void processFile(String contentDocumentId, String recordId) {
+        try {
+            // Enqueue the job to process the file asynchronously
+        //     Integer delayInMinutes = 5; // Set delay of 5 minutes
+      //  System.enqueueJob(new ProcessDocumentJob(contentDocumentId, recordId), delayInMinutes);
+            System.enqueueJob(new ProcessDocumentJob(contentDocumentId, recordId));
+        } catch (Exception e) {
+            System.debug('Error enqueuing process: ' + e.getMessage());
+        }
+    }
+}
