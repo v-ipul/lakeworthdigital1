@@ -1,0 +1,66 @@
+import { LightningElement, track } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+
+export default class DocumentChecklist extends LightningElement {
+    // Checkbox state
+    isUploaded1 = false;
+    isUploaded2 = false;
+    isUploaded3 = false;
+    isUploaded4 = false;
+
+    // File link state for each section
+    @track uploadedFiles1 = [];
+    @track uploadedFiles2 = [];
+    @track uploadedFiles3 = [];
+    @track uploadedFiles4 = [];
+
+    handleUploadFinished1(event) {
+        this.isUploaded1 = true;
+        this.uploadedFiles1 = event.detail.files.map(file => ({
+            ContentDocumentId: file.documentId,
+            Title: file.name,
+            toUrl: `/sfc/servlet.shepherd/document/download/${file.documentId}` // Salesforce file download URL
+        }));
+        this.showToast('Success!', 'Document 1 uploaded successfully.', 'success');
+    }
+
+    handleUploadFinished2(event) {
+        this.isUploaded2 = true;
+        this.uploadedFiles2 = event.detail.files.map(file => ({
+            ContentDocumentId: file.documentId,
+            Title: file.name,
+            toUrl: `/sfc/servlet.shepherd/document/download/${file.documentId}`
+        }));
+        this.showToast('Success!', 'Document 2 uploaded successfully.', 'success');
+    }
+
+    handleUploadFinished3(event) {
+        this.isUploaded3 = true;
+        this.uploadedFiles3 = event.detail.files.map(file => ({
+            ContentDocumentId: file.documentId,
+            Title: file.name,
+            toUrl: `/sfc/servlet.shepherd/document/download/${file.documentId}`
+        }));
+        this.showToast('Success!', 'Document 3 uploaded successfully.', 'success');
+    }
+
+    handleUploadFinished4(event) {
+        this.isUploaded4 = true;
+        this.uploadedFiles4 = event.detail.files.map(file => ({
+            ContentDocumentId: file.documentId,
+            Title: file.name,
+            toUrl: `/sfc/servlet.shepherd/document/download/${file.documentId}`
+        }));
+        this.showToast('Success!', 'Document 4 uploaded successfully.', 'success');
+    }
+
+    showToast(title, message, variant) {
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title,
+                message,
+                variant
+            })
+        );
+    }
+}
