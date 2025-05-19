@@ -1,0 +1,25 @@
+import { LightningElement, api } from 'lwc';
+import processFile from '@salesforce/apex/DocumentProcessingController.processFile';
+
+export default class DocumentChecklist extends LightningElement {
+    // To set the recordId where the files will be uploaded.
+    @api recordId;
+
+    // Define accepted file formats (optional)
+    acceptedFormats = ['.pdf', '.jpg', '.png','.jpeg', '.docx', '.xlsx'];
+
+    // Event handler for when the upload is finished
+    handleUploadFinished(event) {
+        const uploadedFiles = event.detail.files;
+        const contentDocumentId = uploadedFiles[0].documentId;
+
+        // Invoke Apex to start the flow with ContentDocumentId
+        processFile({ contentDocumentId })
+            .then(() => {
+                console.log('File sent for processing');
+            })
+            .catch(error => {
+                console.error('Processing error', error);
+            });
+    }
+}
