@@ -1,0 +1,64 @@
+public class FetchExtractedTextWithDelayJob implements Queueable, Database.AllowsCallouts { 
+
+    private String ocrDocumentScanResultId;
+    private String contentDocumentId;
+
+    // Constructor to pass the parameters to the queueable job
+    public FetchExtractedTextWithDelayJob(String ocrDocumentScanResultId, String contentDocumentId) {
+        this.ocrDocumentScanResultId = ocrDocumentScanResultId;
+        this.contentDocumentId       = contentDocumentId;
+    }
+
+    // Execute method
+    public void execute(QueueableContext context) {
+        String rawJson = fetchExtractedText(ocrDocumentScanResultId, contentDocumentId);
+        System.debug('Raw OCR JSON: ' + rawJson);
+
+        if (rawJson != null) {
+            // Pass the entire JSON into the next job
+            System.enqueueJob(new IdentificationSaverJob(rawJson));
+        } else {
+            System.debug('No OCR payload to enqueue.');
+        }
+    }
+
+    // This method fetches the extracted text using the fetchExtractedText API
+    private String fetchExtractedText(String ocrDocumentScanResultId, String contentDocumentId) {
+        Http http       = new Http();
+        HttpRequest req = new HttpRequest();
+
+        // Endpoint
+        String endpointUrl = '/services/data/v58.0/actions/standard/fetchExtractedText';
+
+        // Build request body
+        Map<String, Object> singleInput = new Map<String, Object>{
+            'ocrDocumentScanResultId' => ocrDocumentScanResultId,
+            'contentDocumentId'       => contentDocumentId,
+            'startPageIndex'          => 1,
+            'endPageIndex'            => 20
+        };
+        Map<String, Object> payload = new Map<String, Object>{
+            'inputs' => new List<Map<String, Object>>{ singleInput }
+        };
+
+        req.setEndpoint(URL.getOrgDomainUrl().toExternalForm() + endpointUrl);
+        req.setMethod('POST');
+        req.setHeader('Content-Type', 'application/json');
+        req.setHeader('Authorization', 'Bearer ' + UserInfo.getSessionId());
+        req.setBody(JSON.serialize(payload));
+
+        // Send
+        HttpResponse resp = http.send(req);
+        System.debug('Extracted Text API response status: ' + resp.getStatus());
+        System.debug('Extracted Text API response body: '   + resp.getBody());
+
+        if (resp.getStatusCode() == 200) {
+            // Return the raw JSON string so the next job can parse it
+            return resp.getBody();
+        } else {
+            System.debug('Error calling fetchExtractedText: ' 
+                + resp.getStatus() + ' / ' + resp.getBody());
+            return null;
+        }
+    }
+}
