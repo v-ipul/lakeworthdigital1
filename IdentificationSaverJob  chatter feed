@@ -1,0 +1,131 @@
+public class IdentificationSaverJob implements Queueable {
+
+    private String rawJson;
+    private Id parentId;
+
+    public IdentificationSaverJob(String rawJson, Id parentId) {
+        this.rawJson = rawJson;
+        this.parentId = parentId;
+    }
+
+    public void execute(QueueableContext context) {
+        if (String.isBlank(rawJson)) {
+            System.debug('No JSON payload passed into saver job.');
+            postChatterError('OCR payload was empty—no data to save.');
+            return;
+        }
+
+        // Top-level array
+        List<Object> wrapperList = (List<Object>) JSON.deserializeUntyped(rawJson);
+        if (wrapperList.isEmpty()) {
+            System.debug('Empty response array.');
+            postChatterError('Unexpected OCR response: empty array.');
+            return;
+        }
+
+        // Only using the first action response
+        Map<String, Object> actionResp = (Map<String, Object>) wrapperList[0];
+        Map<String, Object> outputValues = (Map<String, Object>) actionResp.get('outputValues');
+        if (outputValues == null || !outputValues.containsKey('ocrDocumentScanResultDetails')) {
+            System.debug('No OCR details in outputValues.');
+            postChatterError('Malformed OCR JSON: missing outputValues.');
+            return;
+        }
+
+        // Drill into the nested details wrapper
+        Map<String, Object> detailsWrap = 
+            (Map<String, Object>) outputValues.get('ocrDocumentScanResultDetails');
+        List<Object> pages = 
+            (List<Object>) detailsWrap.get('ocrDocumentScanResultDetails');
+        if (pages == null || pages.isEmpty()) {
+            System.debug('No pages returned.');
+            postChatterError('No pages found in OCR details.');
+            return;
+        }
+
+        // Build a single Profit_and_Loss__c record
+        Identification__c pl = new Identification__c();
+
+        // Iterate each page
+        for (Object pgObj : pages) {
+            Map<String, Object> pageMap = (Map<String, Object>) pgObj;
+            List<Object> kvps = (List<Object>) pageMap.get('keyValuePairs');
+            if (kvps == null) continue;
+
+            // Iterate each key/value pair
+            for (Object kvpObj : kvps) {
+                Map<String, Object> pair    = (Map<String, Object>) kvpObj;
+                Map<String, Object> keyMap   = (Map<String, Object>) pair.get('key');
+                Map<String, Object> valueMap = (Map<String, Object>) pair.get('value');
+                if (keyMap == null || valueMap == null) continue;
+
+                String label = (String) keyMap.get('value');
+                String text  = (String) valueMap.get('value');
+                if (label == null || text == null) continue;
+
+                String norm = label.replaceAll('[^a-zA-Z0-9]', '').toLowerCase();
+
+                // YOUR MAPPING LOGIC
+                if (norm.contains('4bexp')) {
+                    pl.Expiration_Date__c = text;
+                } else if (norm.contains('8')) {
+                    pl.Address__c = text;
+                } else if (norm.contains('15sex')) {
+                    pl.Sex__c = text;
+                }
+				else if (norm.contains('3dob')) {
+                    pl.Date_of_Birth__c = text;
+                }
+				else if (norm.contains('4ddln')) {
+                    pl.Driving_License_Number__c = text;
+                }
+				  // strip out everything except digits and decimal point
+       /* String cleaned = text.replaceAll('[^0-9.]','');
+        if (!String.isBlank(cleaned)) {
+            // Because your field is Number(18,0), you can parse to Decimal and drop any fraction
+            Decimal num = Decimal.valueOf(cleaned);
+            pl.Loan_Number__c = num.setScale(0, RoundingMode.DOWN);
+        }*/
+    }
+                // …add as many else/if branches as you need…
+            
+        }
+
+        pl.Application__c = parentId;
+
+        // Insert the record
+        try {
+            insert pl;
+            System.debug('Inserted Indentification record with Id: ' + pl.Id);
+        } catch (DmlException e) {
+            System.debug('Failed to insert Indentification: ' + e.getMessage());
+            postChatterError('Failed to save Identification record: ' + e.getMessage());
+        }    
+    }
+    
+    private void postChatterError(String message) { 
+         String appName; 
+         try { 
+             SObject rec = Database.query(
+                 'SELECT Name FROM LLC_BI_Application__c WHERE Id = \'' 
+                 + parentId + '\'' 
+                 ); 
+                 appName = (String) rec.get('Name'); 
+                 } catch (Exception e) { 
+                    appName = parentId.toString(); 
+                    }
+
+String bodyText = '⚠️ Error processing document on "' 
+                + appName 
+                + '": ' 
+                + message;
+
+ConnectApi.ChatterFeeds.postFeedElement(
+    /* communityId    */ null,
+    /* subjectId      */ parentId.toString(),
+    /* feedElementType*/ ConnectApi.FeedElementType.FeedItem,
+    /* text           */ bodyText
+);
+    }
+
+}
