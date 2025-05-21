@@ -1,3 +1,95 @@
+public class ProfitAndLossSaverJob implements Queueable {
+
+    private String rawJson;
+    private String recordId;
+
+    public ProfitAndLossSaverJob(String rawJson, String recordId) {
+        this.rawJson = rawJson;
+        this.recordId = recordId;
+    }
+
+    public void execute(QueueableContext context) {
+        if (String.isBlank(rawJson)) {
+            System.debug('No JSON payload passed into saver job.');
+            return;
+        }
+
+        // Top-level array
+        List<Object> wrapperList = (List<Object>) JSON.deserializeUntyped(rawJson);
+        if (wrapperList.isEmpty()) {
+            System.debug('Empty response array.');
+            return;
+        }
+
+        // Only using the first action response
+        Map<String, Object> actionResp = (Map<String, Object>) wrapperList[0];
+        Map<String, Object> outputValues = (Map<String, Object>) actionResp.get('outputValues');
+        if (outputValues == null || !outputValues.containsKey('ocrDocumentScanResultDetails')) {
+            System.debug('No OCR details in outputValues.');
+            return;
+        }
+
+        // Drill into the nested details wrapper
+        Map<String, Object> detailsWrap = 
+            (Map<String, Object>) outputValues.get('ocrDocumentScanResultDetails');
+        List<Object> pages = 
+            (List<Object>) detailsWrap.get('ocrDocumentScanResultDetails');
+        if (pages == null || pages.isEmpty()) {
+            System.debug('No pages returned.');
+            return;
+        }
+
+        // Build a single Profit_and_Loss__c record
+        Profit_and_Loss__c pl = new Profit_and_Loss__c();
+
+        // Iterate each page
+        for (Object pgObj : pages) {
+            Map<String, Object> pageMap = (Map<String, Object>) pgObj;
+            List<Object> kvps = (List<Object>) pageMap.get('keyValuePairs');
+            if (kvps == null) continue;
+
+            // Iterate each key/value pair
+            for (Object kvpObj : kvps) {
+                Map<String, Object> pair    = (Map<String, Object>) kvpObj;
+                Map<String, Object> keyMap   = (Map<String, Object>) pair.get('key');
+                Map<String, Object> valueMap = (Map<String, Object>) pair.get('value');
+                if (keyMap == null || valueMap == null) continue;
+
+                String label = (String) keyMap.get('value');
+                String text  = (String) valueMap.get('value');
+                if (label == null || text == null) continue;
+
+                String norm = label.replaceAll('[^a-zA-Z0-9]', '').toLowerCase();
+
+                // YOUR MAPPING LOGIC
+                if (norm.contains('borrowernames')) {
+                    pl.Borrower_Name_s__c = text;
+                } else if (norm.contains('companyname')) {
+                    pl.Name = text;
+                } else if (norm.contains('typeofbusiness')) {
+                    pl.Type_of_Bussiness__c = text;
+                } else if (norm.contains('loannumber')) {
+                    pl.Loan_Number__c = text;
+                }
+		
+    }
+                
+            
+        }
+
+        pl.Application__c = recordId;
+
+        // Insert the record
+        try {
+            insert pl;
+            System.debug('Inserted Profit_and_Loss__c record with Id: ' + pl.Id);
+        } catch (DmlException e) {
+            System.debug('Failed to insert Profit_and_Loss__c: ' + e.getMessage());
+        }
+    }
+}
+
+
 {"actionName":"fetchExtractedText","errors":null,"invocationId":null,"isSuccess":true,"outcome":null,"outputValues":{"ocrDocumentScanResultDetails":{"ocrDocumentScanResultDetails":[{"status":"SUCCESS","pageNumber":1,"ocrService":"AMAZON_TEXTRACT","ocrDocumentScanResultId":"0ixEi0000000F8j","keyValuePairs":[{"value":{"value":"01/07/2022","confidence":95.41329956054688},"key":{"value":"4a ISS:","confidence":95.41329956054688}},{"value":{"value":"M","confidence":90.11119842529297},"key":{"value":"15 SEX:","confidence":90.11119842529297}},{"value":{"value":"01/08/2029","confidence":95.17903137207031},"key":{"value":"4b EXP:","confidence":95.17903137207031}},{"value":{"value":"C","confidence":95.06723022460938},"key":{"value":"9 CLASS:","confidence":95.06723022460938}},{"value":{"value":"1234567890123","confidence":79.84049224853516},"key":{"value":"5 DD:","confidence":79.84049224853516}},{"value":{"value":"00","confidence":94.99248504638672},"key":{"value":"DUPS:","confidence":94.99248504638672}},{"value":{"value":"NONE","confidence":95.02444458007812},"key":{"value":"9a END:","confidence":95.02444458007812}},{"value":{"value":"99 999 999","confidence":95.25765991210938},"key":{"value":"4d DLN:","confidence":95.25765991210938}},{"value":{"value":"01/07/1973","confidence":99.19088745117188},"key":{"value":"3 DOB:","confidence":99.19088745117188}},{"value":{"value":"5'-11\"","confidence":95.27406311035156},"key":{"value":"16 HGT:","confidence":95.27406311035156}},{"value":{"value":"1","confidence":51.69779586791992},"key":{"value":"APT.","confidence":51.69779586791992}},{"value":{"value":"NONE","confidence":93.73870086669922},"key":{"value":"12 RESTR:","confidence":93.73870086669922}},{"value":{"value":"BRO","confidence":90.3697509765625},"key":{"value":"18 EYES:","confidence":90.3697509765625}}]}]}},"sortOrder":-1,"version":1}
 
 public class FetchExtractedTextWithDelayJob implements Queueable, Database.AllowsCallouts { 
