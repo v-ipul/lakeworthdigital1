@@ -1,3 +1,160 @@
+public class IdentificationSaverJob implements Queueable { 
+    private String rawJson;
+     private Id recordId;
+     private String docName;
+
+public IdentificationSaverJob(String rawJson, Id recordId, String docName) {
+    this.rawJson  = rawJson;
+    this.recordId = recordId;
+    this.docName  = docName;
+}
+
+public void execute(QueueableContext ctx) {
+    // 1) No payload at all
+    if (String.isBlank(rawJson)) {
+        postToChatter(
+            'OCR failed: no data received. Please upload a clear image of your driver’s license.'
+        );
+        return;
+    }
+
+    // 2) Top-level array
+    List<Object> wrapperList = (List<Object>) JSON.deserializeUntyped(rawJson);
+    if (wrapperList.isEmpty()) {
+        postToChatter(
+            'OCR failed: empty response. Please upload a valid driver’s license image.'
+        );
+        return;
+    }
+
+    // 3) Drill into the first action’s outputValues
+    Map<String, Object> actionResp   = (Map<String, Object>) wrapperList[0];
+    Map<String, Object> outputValues = (Map<String, Object>) actionResp.get('outputValues');
+    if (outputValues == null
+        || !outputValues.containsKey('ocrDocumentScanResultDetails')) {
+        postToChatter(
+            'OCR failed: no document details found. Please upload a clear driver’s license.'
+        );
+        return;
+    }
+
+    // 4) Get the pages array
+    Map<String, Object> detailsWrap = 
+        (Map<String, Object>) outputValues.get('ocrDocumentScanResultDetails');
+    List<Object> pages = 
+        (List<Object>) detailsWrap.get('ocrDocumentScanResultDetails');
+
+    if (pages == null || pages.isEmpty()) {
+        postToChatter(
+            'OCR failed: could not detect any pages. Please upload a valid driver’s license image.'
+        );
+        return;
+    }
+
+    // 5) Build a new Identification record
+    Identification__c idRec = new Identification__c();
+    idRec.Application__c   = recordId;
+
+    // 6) Your existing mapping, plus a counter
+    Integer mappedCount = 0;
+    for (Object pgObj : pages) {
+        Map<String, Object> pageMap = (Map<String, Object>) pgObj;
+        List<Object> kvps = (List<Object>) pageMap.get('keyValuePairs');
+        if (kvps == null) continue;
+
+        for (Object kvpObj : kvps) {
+            Map<String, Object> pair     = (Map<String, Object>) kvpObj;
+            Map<String, Object> keyMap   = (Map<String, Object>) pair.get('key');
+            Map<String, Object> valueMap = (Map<String, Object>) pair.get('value');
+            if (keyMap == null || valueMap == null) continue;
+
+            String label = (String) keyMap.get('value');
+            String text  = (String) valueMap.get('value');
+            if (label == null || text == null) continue;
+
+            String norm = label.replaceAll('[^a-zA-Z0-9]', '').toLowerCase();
+
+            if (norm.contains('4bexp')) {
+                idRec.Expiration_Date__c = text;
+                mappedCount++;
+            } else if (norm.contains('8')) {
+                idRec.Address__c = text;
+                mappedCount++;
+            } else if (norm.contains('15sex')) {
+                idRec.Sex__c = text;
+                mappedCount++;
+            } else if (norm.contains('3dob')) {
+                idRec.Date_of_Birth__c = text;
+                mappedCount++;
+            } else if (norm.contains('4ddln')) {
+                idRec.Driving_License_Number__c = text;
+                mappedCount++;
+            }
+            // …add other fields as needed, incrementing mappedCount on each hit…
+        }
+    }
+
+         List<String> addressLines = new List<String>();
+for (Object pgObj : pages) {
+    Map<String,Object> pageMap = (Map<String,Object>) pgObj;
+    List<Object> kvps = (List<Object>) pageMap.get('keyValuePairs');
+    if (kvps == null) continue;
+    for (Object kvpObj : kvps) {
+        Map<String,Object> pair     = (Map<String,Object>) kvpObj;
+        Map<String,Object> keyMap   = (Map<String,Object>) pair.get('key');
+        Map<String,Object> valueMap = (Map<String,Object>) pair.get('value');
+        if (keyMap == null || valueMap == null) continue;
+
+        String rawKey = ((String) keyMap.get('value')).trim().toLowerCase();
+        String val    = (String) valueMap.get('value');
+        if (rawKey.equals('8')
+         || rawKey.startsWith('8 ')
+         || rawKey.contains('apt')) {
+            addressLines.add(val);
+        }
+    }
+}
+if (!addressLines.isEmpty()) {
+    // overwrite or set the address to the joined lines
+    idRec.Address__c = String.join(addressLines, ', ');
+    mappedCount++;
+}
+
+
+    // 7) If we never pulled back any DL fields, treat as a “bad image”
+    if (mappedCount == 0) {
+        postToChatter(
+            ' OCR failed: no valid driver’s license data detected (' + docName + '). Please upload a valid driver’s license image.'
+        );
+        return;
+    }
+
+    // 8) Finally, insert and catch any DML problems
+    try {
+        insert idRec;
+    } catch (DmlException e) {
+        String msg = e.getMessage();
+        // truncate so it fits in 10k chars and doesn’t blow up
+        if (msg.length() > 200) msg = msg.substring(0, 200) + '…';
+        postToChatter(
+            'Could not save Identification record: ' + msg
+        );
+    }
+}
+
+/**  
+ *  Posts a simple text FeedItem under the LLC_BI_Application__c record’s feed  
+ */
+private void postToChatter(String body) {
+    ConnectApi.ChatterFeeds.postFeedElement(
+        /* communityId */ null,
+        /* subjectId   */ recordId,
+        /* feedType    */ ConnectApi.FeedElementType.FeedItem,
+        /* text        */ body
+    );
+}
+}
+
 public class ProfitAndLossSaverJob implements Queueable {
 
     private String rawJson;
